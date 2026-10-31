@@ -1,5 +1,21 @@
 # Validation
 
+## 0.1.0 release build — 2026-10-31
+
+0.1.0 is the code of the console-tested 0.0.2-dev build (below), built as a
+cdylib only so that the release profile's LTO applies. That build
+(`80bab7c8…`) was still on the Switch on 2026-10-31. Its working tree,
+committed as `07829f2`, rebuilds to the same SHA-256 with the earlier crate
+type.
+
+| Evidence | Result |
+| --- | --- |
+| NRO | 61,440 bytes; resident 479,232 → 65,536 bytes |
+| NRO SHA256 | `1246f448fcd42092423ff9df51b7eaade806f95ec3da460ba51cf8f2576ff3c0` |
+| Exported symbols | Unchanged |
+| Host checks | 15 tests; host and Switch Clippy; no-default-features and Skyline release builds |
+| Console | Not yet run; LTO changes the generated code |
+
 ## Console result — 2026-10-27
 
 **Normal-speed gameplay is operator-confirmed for the local 0.0.2-dev build at

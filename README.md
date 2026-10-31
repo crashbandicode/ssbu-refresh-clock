@@ -8,11 +8,13 @@ on the tested Erista setup (2026-10-27), using Deluxe's Vanilla mode. This is th
 first successful console result; see [validation details](docs/VALIDATION.md) for
 the tested build and remaining checks.
 
-The correction is currently a **local development build**. The published **0.0.1**
-prerelease does not contain it: that version's hook loaded, but metadata acquisition
-failed with kernel `OutOfResource` (`0x10801`), leaving normalization inactive.
-Version 0.0.2-dev reuses the shared page SaltyNX already mapped into the game.
+**0.1.0** (2026-10-31) releases that correction, built with LTO (about 400 KiB
+less memory). The **0.0.1** prerelease does not contain it: that version's hook
+loaded, but metadata acquisition failed with kernel `OutOfResource` (`0x10801`),
+leaving normalization inactive. Since 0.0.2-dev the plugin reuses the shared page
+SaltyNX already mapped into the game.
 
+- [v0.1.0 release](https://git.syntaxbyexample.com/intpa/ssbu-refresh-clock/releases/tag/v0.1.0)
 - [Historical v0.0.1 research release](https://git.syntaxbyexample.com/intpa/ssbu-refresh-clock/releases/tag/v0.0.1)
 - [Design and source references](docs/DESIGN.md)
 - [Validation results and remaining questions](docs/VALIDATION.md)

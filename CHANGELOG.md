@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0 — 2026-10-31
+
+- Releases the console-confirmed 0.0.2-dev correction below; the plugin code is
+  that build's.
+- Built as a cdylib only. Cargo skips LTO for a library that is also an rlib, so
+  the release profile's `lto = "thin"` never applied. Resident size (`.text` +
+  `.rodata` + `.data` + `.bss`) 468 → 64 KiB, with the same exports.
+- Fifteen host tests, host and Switch Clippy, the no-default-features build and
+  the Skyline release build pass. 0.1.0 itself has not run on the console yet.
+
 ## 0.0.2-dev — operator-confirmed console result, 2026-10-27
 
 - Reuse SaltyNX's existing readable 4 KiB shared page in the game before requesting
