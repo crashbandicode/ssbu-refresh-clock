@@ -3,11 +3,17 @@
 An experimental Rust Skyline plugin for **Super Smash Bros. Ultimate 13.0.5**,
 targeting **120 Hz docked output, 60 rendered FPS, and normal gameplay speed**.
 
-**Version 0.0.1 is a research prerelease for review. Console validation is pending.**
-The source, host tests, and Switch build have been checked; normal game speed,
-frame pacing, and compatibility on an actual Switch have not been established.
+**Normal-speed gameplay at 120 Hz / 60 FPS is operator-confirmed with 0.0.2-dev**
+on the tested Erista setup (2026-10-27), using Deluxe's Vanilla mode. This is the
+first successful console result; see [validation details](docs/VALIDATION.md) for
+the tested build and remaining checks.
 
-- [v0.0.1 release and downloads](https://git.syntaxbyexample.com/intpa/ssbu-refresh-clock/releases/tag/v0.0.1)
+The correction is currently a **local development build**. The published **0.0.1**
+prerelease does not contain it: that version's hook loaded, but metadata acquisition
+failed with kernel `OutOfResource` (`0x10801`), leaving normalization inactive.
+Version 0.0.2-dev reuses the shared page SaltyNX already mapped into the game.
+
+- [Historical v0.0.1 research release](https://git.syntaxbyexample.com/intpa/ssbu-refresh-clock/releases/tag/v0.0.1)
 - [Design and source references](docs/DESIGN.md)
 - [Validation results and remaining questions](docs/VALIDATION.md)
 - [Changelog](CHANGELOG.md)
@@ -43,10 +49,13 @@ This does not modify HOME animation timing or promise to fix irregular frametime
 
 The entire 76-byte 13.0.5 worker and its wait-import thunk must match before the
 hook is installed. Metadata is read through SaltyNX 2.1.2's existing shared page.
-No shared state or display setting is written. Its sole IPC session is released
-immediately after obtaining a copied shared-memory handle; no IPC in the event
-loop. A missing service, rejected layout or unsupported display configuration
-keeps the stock counter behavior.
+Initialization first searches complete, readable 4 KiB shared-memory regions for
+one unique complete NX-FPS prefix and borrows the existing game-lifetime mapping.
+It does not read arbitrary heaps or code for this search. An incomplete scan or
+ambiguous page selection fails closed. If no matching page exists, a short IPC
+session obtains a copied shared-memory handle as a fallback, then closes promptly.
+No shared state or display setting is written; no discovery/IPC runs in the event
+loop. Missing metadata or an unsupported display configuration retains stock behavior.
 
 ## Files and rollback
 
@@ -69,13 +78,19 @@ diagnostic flags automatically. For a backed-up console trial:
   so recurring SD writes cannot interfere with the comparison.
 - Fully exit and relaunch Smash after changing the NRO or flag. Merely opening
   HOME does not start a new game process.
-- Rollback: exit Smash, remove only this added NRO, then relaunch. Preserve all
-  existing mods/settings. No existing NRO is replaced by this candidate.
+- Rollback: exit Smash, remove this plugin's NRO or restore its backed-up previous
+  version when testing an update. Remove any test flags you added, then relaunch.
+  Preserve other plugins and settings.
 
 Back up the current plugin inventory before installation and verify the download
 against the release's `SHA256SUMS.txt`. Fully close Smash before copying files.
 
-## Acceptance still required
+## Console validation
+
+The operator confirmed that the 0.0.2-dev test resolved the fast-gameplay symptom
+after the requested full-relaunch and timed-match check. The report was qualitative;
+no stopwatch values or post-fix diagnostic readback have been collected yet.
+Remaining checks:
 
 1. `guard_ok=true`, `thread_entries=1`, valid metadata and `normalizing=true` in
    status at 120 Hz / 60 FPS. Missing prerequisites are not successful activation.
@@ -86,14 +101,16 @@ against the release's `SHA256SUMS.txt`. Fully close Smash before copying files.
    event-thread counters, not measured gameplay updates. The latest file retains
    this interval so two live SD reads are unnecessary. Exclude startup and mode
    transitions; a single lifetime average is misleading.
-3. A normal match's timer advances 20 seconds in approximately 20 real seconds.
-4. At 60 Hz, the timer remains normal and counters return to one increment/event.
-5. Check dock/undock, HOME/resume, full game relaunch, menu/match transitions and
-   frametime behavior. Preserve the original catch-up loop for genuine slow frames.
+   Development builds also report `shared_source` (normally `borrowed_saltynx_page`)
+   and `last_shared_error_stage`; the legacy `last_ipc_error` holds the result code.
+3. At 60 Hz, the timer remains normal and counters return to one increment/event.
+4. Check dock/undock, HOME/resume, full game relaunch, menu/match transitions and
+    frametime behavior. Preserve the original catch-up loop for genuine slow frames.
 
-The game's minimum-one-credit rule means a counter unit correction alone cannot
-prove normal speed under arbitrary irregular rendering. Timer/frametime acceptance
-on the actual console decides whether this candidate is sufficient.
+For reproduction on another setup, compare 20 game-timer seconds with 20 real
+seconds in a normal match. The game's minimum-one-credit rule means the successful
+result on this setup does not establish behavior under every rendering condition.
+Stable frametimes and input-latency improvements have not been measured.
 
 ## Development
 

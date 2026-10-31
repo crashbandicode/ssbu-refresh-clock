@@ -56,15 +56,35 @@ The inspected prefix is 174 bytes of SaltyNX 2.1.2's 310-byte core block:
 Global refresh is byte 1 of the 4096-byte shared page. Block discovery accepts
 exactly one complete, four-byte-aligned matching prefix.
 
-SaltyNX accepts only one service session at a time. A background thread obtains
-a copied shared-memory handle with command 7, ends the session with command 0,
-closes it, and maps the existing object. No display setters or allocation commands
-are sent. The map must use the object's RW permission, but the candidate only
-reads it. It excludes heap/alias ranges and existing mappings, closes the copied
-handle, and retains the successful mapping for the game-process lifetime.
+SaltyNX's injected core already maps this 4096-byte object into the game before
+initializing NX-FPS. Since 0.0.2-dev, the background initializer first walks the
+address-space regions with `QueryMemory`, inspecting only complete readable
+4096-byte `SharedMem` regions. It borrows the page only after a complete bounded
+scan finds one matching page with a unique complete prefix. Multiple matching
+pages or an incomplete scan fail closed. No heap, code or device-memory contents
+are searched. The borrowed mapping belongs to SaltyNX and is never closed or
+unmapped by this plugin; NX-FPS retains it for the game-process lifetime.
+
+If no matching existing page is found, initialization retains the IPC fallback.
+SaltyNX accepts only one service session at a time: obtain a copied shared-memory
+handle with command 7, end the session with command 0, and close it before mapping.
+No display setters or shared-memory allocation commands are sent. The map must
+use the object's RW permission, but the plugin only reads it. The fallback excludes
+heap/alias ranges and existing mappings, closes the copied handle, and retains the
+successful mapping for the game-process lifetime.
 
 Unavailable/rejected metadata retains native counter increments. A rejected CMIF
 reply also closes an identifiable copied handle rather than leaking it.
+
+### Reason for reusing the existing mapping
+
+The 0.0.1 console log showed successful hook entry but 60 failed acquisitions ending
+in `0x10801` (kernel `OutOfResource`); normalization never activated. That log did
+not identify whether session creation or another acquisition stage failed. Reusing
+the page already required by NX-FPS removes the redundant resource-acquisition
+dependency. After the 0.0.2-dev update, the operator confirmed normal-speed gameplay
+at 120 Hz / 60 FPS. Post-fix diagnostic readback is still needed to verify the
+selected acquisition path and measured event/logical rates.
 
 ## Diagnostics
 
@@ -76,13 +96,19 @@ Use it for activation/rate checks; disable it for frametime comparisons.
 `observe-only.flag` keeps all original increments while collecting the same
 counters. Neither flag changes an existing display configuration.
 
+`shared_source` identifies the borrowed-page or fallback-mapping path.
+`last_shared_error_stage` identifies the failed acquisition stage, with its result
+code in the legacy `last_ipc_error` field. These distinguish missing metadata from
+an active correction that still needs timing investigation.
+
 ## Upstream references
 
 These are source/protocol references, not claims of endorsement or binary matching:
 
 - [Skyline Rust bindings](https://github.com/skyline-rs/skyline-rs), dependency 0.6.0.
 - [SaltyNX 2.1.2](https://github.com/masagrator/SaltyNX/tree/af8941410ff13b63586b615bf5a0eba340d782fd):
-  `saltysd_core/source/NX-FPS-Common.hpp`, `api/NVN.cpp`, `ipc.h`, and
+  `saltysd_core/source/main.c` (existing page mapping), `NX-FPS-Common.hpp`,
+  `api/NVN.cpp`, `ipc.h`, and
   `saltysd_proc/source/service.c`, `main.c`, `display_refresh_rate.cpp`.
 - [FPSLocker 3.5.0](https://github.com/masagrator/FPSLocker/tree/0931909324a917b8cd0eea58587c170075327d94):
   shared-field consumers and docked target controls. It does not clear the active byte.
@@ -92,8 +118,9 @@ These are source/protocol references, not claims of endorsement or binary matchi
 
 ## Remaining runtime questions
 
-The worker may already be running before Skyline installs the entry hook; zero
-`thread_entries` would reveal that. Half-event parity can interact with present
+The operator-confirmed normal-speed result covers one tested setup. On other load
+orders the worker may already be running before Skyline installs the entry hook;
+zero `thread_entries` would reveal that. Half-event parity can interact with present
 sampling and the caller's minimum-one-credit rule. Shared mode fields are not one
-atomic snapshot and can change during transitions. These require console evidence;
-host tests cannot establish a universal timing correction.
+atomic snapshot and can change during transitions. Wider console testing remains
+necessary; the successful trial and host tests do not establish universal coverage.

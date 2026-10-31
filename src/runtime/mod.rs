@@ -9,6 +9,7 @@ use std::time::Duration;
 const SITE: usize = 0x3810ff0;
 const WAIT: usize = 0x39c1440;
 const DIRECTORY: &str = "sd:/ultimate/ssbu-refresh-clock";
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 const WORDS: [u32; 19] = [
     0xf81d0ff5, 0xa9014ff4, 0xa9027bfd, 0x910083fd, 0xf9400414, 0x91042293, 0x9104e295, 0xaa1303e0,
     0x9406c10c, 0xc85ffea8, 0x91000508, 0xc809fea8, 0x35ffffa9, 0x394ec288, 0x34ffff28, 0xa9427bfd,
@@ -114,6 +115,8 @@ fn monitor(guard_ok: bool, telemetry: bool) {
     let _ = std::fs::create_dir_all(DIRECTORY);
     let mut attempts = 0;
     let mut last_error = 0;
+    let mut last_error_stage = "none";
+    let mut shared_source = "unavailable";
     let mut previously_ready = false;
     let mut previous_counters = None;
     let start = unsafe { skyline::nn::os::GetSystemTick() } as u64;
@@ -121,8 +124,16 @@ fn monitor(guard_ok: bool, telemetry: bool) {
         if guard_ok && PAGE.load(Ordering::Acquire) == 0 && attempts < 60 {
             attempts += 1;
             match unsafe { ipc::map_existing_shared_memory() } {
-                Ok(page) => PAGE.store(page, Ordering::Release),
-                Err(error) => last_error = error,
+                Ok(acquired) => {
+                    shared_source = acquired.source;
+                    last_error = 0;
+                    last_error_stage = "none";
+                    PAGE.store(acquired.page, Ordering::Release);
+                }
+                Err(error) => {
+                    last_error = error.result;
+                    last_error_stage = error.stage;
+                }
             }
         }
         let page = PAGE.load(Ordering::Acquire);
@@ -151,7 +162,7 @@ fn monitor(guard_ok: bool, telemetry: bool) {
             let logical_interval = logical.wrapping_sub(old_logical);
             let final_snapshot = !telemetry && complete;
             let status = format!(
-                "candidate=0.0.1\nhardware_accepted=false\nguard_ok={guard_ok}\ncontinuous_telemetry={telemetry}\nsnapshot_final={final_snapshot}\nobserve_only={}\nthread_entries={}\nnormalizing={}\nphysical_events={physical}\nlogical_ticks={logical}\nnormalized_events={}\nmode_transitions={}\nelapsed_system_ticks={}\ntick_hz=19200000\ninterval_valid={interval_valid}\ninterval_system_ticks={elapsed_interval}\ninterval_physical_events={physical_interval}\ninterval_logical_ticks={logical_interval}\nmetadata={current:?}\nshared_map_attempts={attempts}\nlast_ipc_error=0x{last_error:08x}\nnot_measured=gameplay_updates,displayed_frames,frametimes,input_latency\n",
+                "candidate={VERSION}\nhardware_accepted=false\nguard_ok={guard_ok}\ncontinuous_telemetry={telemetry}\nsnapshot_final={final_snapshot}\nobserve_only={}\nthread_entries={}\nnormalizing={}\nphysical_events={physical}\nlogical_ticks={logical}\nnormalized_events={}\nmode_transitions={}\nelapsed_system_ticks={}\ntick_hz=19200000\ninterval_valid={interval_valid}\ninterval_system_ticks={elapsed_interval}\ninterval_physical_events={physical_interval}\ninterval_logical_ticks={logical_interval}\nmetadata={current:?}\nshared_map_attempts={attempts}\nshared_source={shared_source}\nlast_shared_error_stage={last_error_stage}\nlast_ipc_error=0x{last_error:08x}\nnot_measured=gameplay_updates,displayed_frames,frametimes,input_latency\n",
                 OBSERVE_ONLY.load(Ordering::Relaxed), THREAD_ENTRIES.load(Ordering::Relaxed),
                 NORMALIZING.load(Ordering::Relaxed), NORMALIZED_EVENTS.load(Ordering::Relaxed),
                 TRANSITIONS.load(Ordering::Relaxed), now.wrapping_sub(start),
@@ -185,7 +196,7 @@ pub fn main() {
         skyline::install_hook!(ssbu_refresh_clock_worker);
     }
     skyline::println!(
-        "[ssbu_refresh_clock] experimental0.0.1 guard={guard_ok} observe_only={observe}"
+        "[ssbu_refresh_clock] experimental{VERSION} guard={guard_ok} observe_only={observe}"
     );
     let _ = std::thread::Builder::new()
         .name("ssbu-refresh-clock-status".into())

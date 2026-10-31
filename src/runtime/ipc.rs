@@ -1,8 +1,18 @@
-//! One short SaltySD session to obtain its existing shared memory; no setters.
+//! Borrow SaltyNX's existing game mapping first; short IPC fallback, no setters.
 use crate::{mapping, metadata};
 use core::arch::asm;
 
 const PAGE: usize = metadata::PAGE_SIZE;
+
+pub(super) struct Acquired {
+    pub page: usize,
+    pub source: &'static str,
+}
+
+pub(super) struct Failure {
+    pub stage: &'static str,
+    pub result: u32,
+}
 
 #[repr(C)]
 #[derive(Default)]
@@ -121,22 +131,88 @@ unsafe fn map(handle: u32) -> Result<usize, u32> {
     Err(last_error)
 }
 
-/// Retain the successful mapping for the entire game process lifetime. The
-/// background thread owns initialization; the event worker never performs IPC.
-pub(super) unsafe fn map_existing_shared_memory() -> Result<usize, u32> {
-    let session = connect()?;
+/// SaltyNX's injected core maps this object before calling NX_FPS, and NX-FPS
+/// retains its pointer for the game lifetime. Borrow it without another session,
+/// handle or mapping allocation. Reject an incomplete scan or ambiguous matches.
+unsafe fn borrowed_page() -> Result<Option<usize>, u32> {
+    let base = get_info(12)?;
+    let end = base.checked_add(get_info(13)?).ok_or(0xffff_0010_u32)?;
+    let mut cursor = base;
+    let mut found = None;
+    for _ in 0..4096 {
+        if cursor >= end {
+            return Ok(found);
+        }
+        let info = query(cursor)?;
+        let next = info.address.checked_add(info.size).ok_or(0xffff_0011_u32)?;
+        if next <= cursor {
+            return Err(0xffff_0012);
+        }
+        if info.address >= base
+            && next <= end
+            && mapping::readable_shared_page(info.kind, info.permission, info.size)
+        {
+            let mut bytes = [0_u8; PAGE];
+            for (i, byte) in bytes.iter_mut().enumerate() {
+                *byte = ((info.address as usize + i) as *const u8).read_volatile();
+            }
+            if let Some(offset) = metadata::find_prefix(&bytes) {
+                let magic = (info.address as usize + offset) as *const u32;
+                if magic.read_volatile() == metadata::MAGIC {
+                    if found.is_some() {
+                        return Err(0xffff_0013);
+                    }
+                    found = Some(info.address as usize);
+                }
+            }
+        }
+        cursor = next;
+    }
+    Err(0xffff_0014)
+}
+
+/// A borrowed page is never unmapped or closed here. A successful fallback mapping
+/// is also retained for the game lifetime. Only initialization performs IPC.
+pub(super) unsafe fn map_existing_shared_memory() -> Result<Acquired, Failure> {
+    if let Some(page) = borrowed_page().map_err(|result| Failure {
+        stage: "scan_existing_shared_page",
+        result,
+    })? {
+        return Ok(Acquired {
+            page,
+            source: "borrowed_saltynx_page",
+        });
+    }
+    let session = connect().map_err(|result| Failure {
+        stage: "connect_saltysd",
+        result,
+    })?;
     let reply = transact(session, 7);
     // EndSession intentionally terminates the server's synchronous request.
     let _ = transact(session, 0);
     close(session); // Never hold SaltyNX's sole session while sleeping.
-    let words = reply?;
+    let words = reply.map_err(|result| Failure {
+        stage: "request_shared_handle",
+        result,
+    })?;
     let Some(handle) = metadata::shared_handle_reply(&words) else {
         if let Some(handle) = metadata::single_copied_handle(&words) {
             close(handle);
         }
-        return Err(0xffff_0004);
+        return Err(Failure {
+            stage: "decode_shared_handle",
+            result: 0xffff_0004,
+        });
     };
     let mapped = map(handle);
     close(handle);
     mapped
+        .map(|page| Acquired {
+            page,
+            source: "new_shared_mapping",
+        })
+        .map_err(|result| Failure {
+            stage: "map_shared_handle",
+            result,
+        })
 }
