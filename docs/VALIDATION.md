@@ -14,6 +14,9 @@ type.
 | NRO SHA256 | `1246f448fcd42092423ff9df51b7eaade806f95ec3da460ba51cf8f2576ff3c0` |
 | Exported symbols | Unchanged |
 | Host checks | 15 tests; host and Switch Clippy; no-default-features and Skyline release builds |
+| Release | [v0.1.0 prerelease](https://git.syntaxbyexample.com/intpa/ssbu-refresh-clock/releases/tag/v0.1.0); all four assets downloaded and matched |
+| Eden (2026-10-31) | Next to the card's other plugins: `guard_ok=true`, one worker entry, 3181 events passed through, `last_shared_error_stage=connect_saltysd` (Eden has no SaltyNX), so normalization stayed off; an offline 1v1 ran to the results |
+| Card install | DBI, 2026-10-31 03:53:24Z, read back; replaced 0.0.2-dev `80bab7c8…`; rollback copy `ultimate/ssbu-refresh-clock/backups/pre-1246f448fcd42092.nro` |
 | Console | Not yet run; LTO changes the generated code |
 
 ## Console result — 2026-10-27
