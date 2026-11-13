@@ -19,7 +19,10 @@ twice: the scheduler has state-dependent suppression and a minimum-one-credit ru
 
 The candidate replaces only the dedicated worker, after matching all 76 original
 bytes and the 16-byte wait-import thunk. It does not hook present/acquire or the
-main-loop caller. The matching binary itself is not distributed.
+main-loop caller. The matching binary itself is not distributed. It has no GPU,
+present, buffer-index or input hook, no catch-up bypass and no gameplay
+multiplier, and it does not change HOME animation timing. There is no separate
+game-version check: the byte match is the guard (`signature_matches`).
 
 ## Clock conversion
 
@@ -83,8 +86,9 @@ in `0x10801` (kernel `OutOfResource`); normalization never activated. That log d
 not identify whether session creation or another acquisition stage failed. Reusing
 the page already required by NX-FPS removes the redundant resource-acquisition
 dependency. After the 0.0.2-dev update, the operator confirmed normal-speed gameplay
-at 120 Hz / 60 FPS. Post-fix diagnostic readback is still needed to verify the
-selected acquisition path and measured event/logical rates.
+at 120 Hz / 60 FPS. On 2026-11-02 the 0.1.0 status read back from the card showed
+`shared_source=borrowed_saltynx_page` after one attempt, and about 120 physical
+events and 60 logical ticks a second at 120 Hz ([VALIDATION](VALIDATION.md)).
 
 ## Diagnostics
 
@@ -105,7 +109,7 @@ an active correction that still needs timing investigation.
 
 These are source/protocol references, not claims of endorsement or binary matching:
 
-- [Skyline Rust bindings](https://github.com/skyline-rs/skyline-rs), dependency 0.6.0.
+- [Skyline Rust bindings](https://github.com/ultimate-research/skyline-rs), dependency 0.6.0.
 - [SaltyNX 2.1.2](https://github.com/masagrator/SaltyNX/tree/af8941410ff13b63586b615bf5a0eba340d782fd):
   `saltysd_core/source/main.c` (existing page mapping), `NX-FPS-Common.hpp`,
   `api/NVN.cpp`, `ipc.h`, and

@@ -6,7 +6,9 @@ This is a standalone Rust Skyline research plugin, not part of Deluxe or SGPO.
 - Preserve the original event wait, atomic ordering, termination check and genuine
   catch-up behavior. Do not replace global SDK waits or force extra-event counts
   to zero. Never insert a callback inside an exclusive-load/store retry loop.
-- Preserve the full version/site guard and stock fallback for unsupported modes.
+- Preserve the full site signature guard (the worker's 76 bytes and its wait
+  thunk; there is no separate game-version check) and the stock fallback for
+  unsupported modes.
 - Do not patch the SGPO-sensitive `0x374812c` neighborhood or introduce renderer,
   GPU wait, buffer-index, input, HOME, clock-frequency or gameplay-state changes.
 - Do not claim console success from a build, host test or FPS overlay alone.

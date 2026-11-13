@@ -9,6 +9,9 @@
   `.rodata` + `.data` + `.bss`) 468 → 64 KiB, with the same exports.
 - Fifteen host tests, host and Switch Clippy, the no-default-features build and
   the Skyline release build pass. 0.1.0 itself has not run on the console yet.
+- Note added 2026-11-13: installed on the Switch card on 2026-10-31; its
+  status file, read back on 2026-11-02, showed the correction active at
+  120 Hz / 60 FPS (`docs/VALIDATION.md`).
 
 ## 0.0.2-dev — operator-confirmed console result, 2026-10-27
 

@@ -1,5 +1,27 @@
 # Validation
 
+## 0.1.0 on the console — 2026-11-02 (status readback)
+
+On 2026-11-02 another session read `ultimate/ssbu-refresh-clock/status.txt`
+off the card over DBI MTP twice (copies:
+`/home/intpa/ssbu-cpu-pilot-install/card-2026-11-02-crash/` at 15:03Z and
+`card-2026-11-02-boot/` at 15:44Z, on the Surface). The card held 0.1.0
+(`1246f448…`) with `telemetry.flag` on. Rates are `interval_* × 19200000 /
+interval_system_ticks`.
+
+| Field | 15:03Z readback | 15:44Z readback |
+| --- | --- | --- |
+| `candidate`, `guard_ok`, `thread_entries` | 0.1.0, true, 1 | 0.1.0, true, 1 |
+| Metadata (refresh, interval, docked target) | 120 Hz, 2, 60 | 60 Hz, 1, 60 |
+| `normalizing` | true | false |
+| Last interval | 124 events, 62 ticks in 19,860,907 ticks: 119.9 / 59.9 a second | 62 events, 62 ticks in 19,663,565 ticks: 60.5 / 60.5 a second |
+| Lifetime | 141,585 events, 70,901 ticks, 141,368 normalized, 1 mode transition, 1,192 s | 271 events, 271 ticks |
+| `shared_source`, attempts, error stage | `borrowed_saltynx_page`, 1, none | the same |
+
+This covers checks 1 and 2 of "Remaining hardware validation" (below) once,
+and the counter half of check 3. No stopwatch timing, frame times or
+transitions were measured.
+
 ## 0.1.0 release build — 2026-10-31
 
 0.1.0 is the code of the console-tested 0.0.2-dev build (below), built as a
@@ -17,7 +39,7 @@ type.
 | Release | [v0.1.0 prerelease](https://git.syntaxbyexample.com/intpa/ssbu-refresh-clock/releases/tag/v0.1.0); all four assets downloaded and matched |
 | Eden (2026-10-31) | Next to the card's other plugins: `guard_ok=true`, one worker entry, 3181 events passed through, `last_shared_error_stage=connect_saltysd` (Eden has no SaltyNX), so normalization stayed off; an offline 1v1 ran to the results |
 | Card install | DBI, 2026-10-31 03:53:24Z, read back; replaced 0.0.2-dev `80bab7c8…`; rollback copy `ultimate/ssbu-refresh-clock/backups/pre-1246f448fcd42092.nro` |
-| Console | Not yet run; LTO changes the generated code |
+| Console | Not run by 2026-10-31 (LTO changes the generated code); see 2026-11-02 above |
 
 ## Console result — 2026-10-27
 
@@ -39,15 +61,16 @@ were retained. Continuous telemetry was enabled for this trial.
 | Tested version | Local `0.0.2-dev`; not the published `v0.0.1` artifact |
 | NRO size | 475,136 bytes |
 | NRO SHA256 | `80bab7c8cc4a4dfc1200dda9852c84df1ac3cef71c9af4617774396844853a20` |
-| Installation verification | 67 fresh file readbacks; 65 protected existing files unchanged |
+| Installation verification | The install receipt was not found on 2026-11-13; the card still held `80bab7c8…` on 2026-10-31 (the `old` of the 0.1.0 install receipt) |
 | Gameplay-speed result | Operator confirmed the updated test works |
-| Post-fix metadata/event counters | Awaiting diagnostic readback |
+| Post-fix metadata/event counters | None for 0.0.2-dev; 0.1.0's are above (2026-11-02) |
 | 60 Hz and transition regressions | Outstanding |
 | Frametime/input-latency measurements | Outstanding; clean-I/O frametime test requires telemetry disabled |
 
-The installed build has source-input/artifact hashes retained in the external
-test manifest. It was built from local changes based on
-`59ecd4d98f1b704a7fa516e0c878a69b047b9049`; it has no new published tag or release.
+The installed build was built from local changes based on
+`59ecd4d98f1b704a7fa516e0c878a69b047b9049`. Those changes were committed on
+2026-10-31 as `07829f2` (see the 0.1.0 section); 0.0.2-dev itself has no tag or
+release.
 
 ## 0.0.2-dev local correction
 
@@ -113,12 +136,15 @@ preparation involved no console writes; later console trials are recorded above.
 
 ## Remaining hardware validation
 
-1. Retrieve the post-fix diagnostics to verify version guard, worker entry,
+1. Retrieve the post-fix diagnostics to verify the signature guard, worker entry,
    acquisition source and mode activation. The old 0.0.1 log cannot verify 0.0.2-dev.
+   (Done once for 0.1.0, 2026-11-02, above.)
 2. Check approximately 120 physical wakes and 60 logical increments per second
    using a representative match interval. Record whether the latest interval was
    captured after HOME/exit. Those are event-thread counters, not game updates.
+   (One interval for 0.1.0, 2026-11-02, above; not tied to a known match interval.)
 3. Verify native 60 Hz behavior and restore the requested 120 Hz / 60 FPS setup.
+   (Counters at 60 Hz seen once, 2026-11-02; the timer was not checked.)
 4. Exercise relaunch, HOME/resume, dock/undock and menu/match transitions.
 5. Compare frametimes with continuous telemetry disabled and other settings held
    constant. Test compatibility with the actual installed mod stack.
