@@ -66,3 +66,7 @@ plain host builds skip the Switch-only runtime. Output:
 - Releases: [v0.1.0](https://git.syntaxbyexample.com/intpa/ssbu-refresh-clock/releases/tag/v0.1.0),
   [v0.0.1](https://git.syntaxbyexample.com/intpa/ssbu-refresh-clock/releases/tag/v0.0.1)
   (historical research release).
+
+## License
+
+MIT; see [LICENSE](LICENSE).
