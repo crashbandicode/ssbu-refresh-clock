@@ -34,6 +34,8 @@ could not read SaltyNX's settings, so it never switched on.
 
 ## Install
 
+Tested on: Super Smash Bros. Ultimate 13.0.5 · Switch firmware 23.5.0 · Atmosphère 1.12.2
+
 Copy `libssbu_refresh_clock.nro` from the
 [v0.1.0 release](https://git.syntaxbyexample.com/intpa/ssbu-refresh-clock/releases/tag/v0.1.0)
 to `sd:/atmosphere/contents/01006A800016E000/romfs/skyline/plugins/`, after
